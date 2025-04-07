@@ -1,0 +1,14 @@
+{
+  "morgan": {
+    "type": "dev",
+    "stream": "console",
+    "stream_auth": "console"
+  },
+  "accounting": {
+    "roles": ["USER", "RESTAURANT", "COURIER"],
+    "user_role": "USER",
+    "restaurant_role": "RESTAURANT",
+    "courier_role": "COURIER",
+    "salt_rounds":  10
+  }
+}
