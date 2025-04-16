@@ -1,91 +1,101 @@
-import express from "express";
-import asyncHandler from "express-async-handler";
-import { validator } from "../middleware/validation.js";
-import {
-  schemaAccount,
+import express from 'express';
+import asyncHandler from 'express-async-handler';
+import jwt from 'jsonwebtoken';
+import config from 'config';
+import { validator } from '../middleware/validation.js';
+import { schemaAccount, schemaPassowrd } from '../validation/AccountSchemas.js';
 
-  schemaPassowrd,
-} from "../validation/AccountSchemas.js";
-import accountingService from "../service/AccountsService.js";
+const accountsRoute = (postgresConnection) => {
+  const router = express.Router();
 
-const accountsRoute = express.Router();
+  // Инициализация сервиса с передачей postgresConnection
+  const accountingServicePromise = import('../service/AccountsService.js').then(module => module.default(postgresConnection));
 
-//add user account
-accountsRoute.post(
-  "/user",
-  validator(schemaAccount),
-  asyncHandler(async (req, res) => {
-    const account = await accountingService.addAccount(req.body);
-    res.status(201).send(account);
-  })
-);
+  const authenticateToken = async (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).send({ error: 'Authorization token required' });
+    }
+    try {
+      const decoded = jwt.verify(token, config.get('jwt.secret'));
+      req.user = decoded;
+      next();
+    } catch (error) {
+      res.status(403).send({ error: 'Invalid or expired token' });
+    }
+  };
 
-// add restaurant account
-accountsRoute.post(
-  "/restaurant",
-  validator(schemaAccount),
-  asyncHandler(async (req, res) => {
-    const account = await accountingService.addAccount(req.body);
-    res.status(201).send(account);
-  })
-);
+  // Создание аккаунта (user, restaurant, courier)
+  router.post(
+    '/:role(user|restaurant|courier)',
+    validator(schemaAccount),
+    asyncHandler(async (req, res) => {
+      const accountingService = await accountingServicePromise;
+      const { role } = req.params;
+      const accountData = { ...req.body, role };
+      const account = await accountingService.addAccount(accountData);
+      res.status(201).send({ message: `${role} account created`, account });
+    })
+  );
 
-// add courier account
-accountsRoute.post(
-  "/courier",
-  validator(schemaAccount),
-  asyncHandler(async (req, res) => {
-    const account = await accountingService.addAccount(req.body);
-    res.status(201).send(account);
-  })
-);
+  // Обновление пароля
+  router.put(
+    '/',
+    authenticateToken,
+    validator(schemaPassowrd),
+    asyncHandler(async (req, res) => {
+      const accountingService = await accountingServicePromise;
+      const updatedAccount = await accountingService.updatePassword(req.body);
+      res.send({ message: 'Password updated', account: updatedAccount });
+    })
+  );
 
+  // Получение аккаунта по email
+  router.get(
+    '/:email',
+    authenticateToken,
+    asyncHandler(async (req, res) => {
+      const accountingService = await accountingServicePromise;
+      const account = await accountingService.getAccount(req.params.email);
+      res.status(200).send(account);
+    })
+  );
 
+  // Блокировка/разблокировка аккаунта
+  router.put(
+    '/:action(block|unblock)/:email',
+    authenticateToken,
+    asyncHandler(async (req, res) => {
+      const accountingService = await accountingServicePromise;
+      const { action, email } = req.params;
+      const isBlocked = action === 'block';
+      const updatedAccount = await accountingService.setAccountBlockStatus(email, isBlocked);
+      res.status(200).send({ message: `Account ${isBlocked ? 'blocked' : 'unblocked'}`, account: updatedAccount });
+    })
+  );
 
-// update password
-accountsRoute.put(
-  "/",
-  validator(schemaPassowrd),
-  asyncHandler(async (req, res) => {
-    await accountingService.updatePassword(req.body);
-    res.send("account updated");
-  })
-);
+  // Удаление аккаунта
+  router.delete(
+    '/:email',
+    authenticateToken,
+    asyncHandler(async (req, res) => {
+      const accountingService = await accountingServicePromise;
+      await accountingService.delete(req.params.email);
+      res.status(200).send({ message: 'Account deleted' });
+    })
+  );
 
-// get account by email
-accountsRoute.get(
-  "/:email",
-  asyncHandler(async (req, res) => {
-    const account = await accountingService.getAccount(req.params.email);
-    res.status(200).send(account);
-  })
-);
+  // Логин
+  router.post(
+    '/login',
+    asyncHandler(async (req, res) => {
+      const accountingService = await accountingServicePromise;
+      const token = await accountingService.login(req.body);
+      res.send(token);
+    })
+  );
 
-// block / unblock  account
-accountsRoute.put(
-  "/:action(block|unblock)/:email",
-  asyncHandler(async (req, res) => {
-    const isBlocked = req.params.action === "block";
-    await accountingService.setAccountBlockStatus(req.params.email, isBlocked);
-    res.status(200).send(`account ${isBlocked ? "blocked" : "unblocked"}`);
-  })
-);
+  return router;
+};
 
-// delete account
-accountsRoute.delete(
-  "/:email",
-  asyncHandler(async (req, res) => {
-    await accountingService.delete(req.params.email);
-    res.status(200).send("deleted");
-  })
-);
-
-// login
-accountsRoute.post(
-  "/login",
-  asyncHandler(async (req, res) => {
-    const token = await accountingService.login(req.body);
-    res.send(token);
-  })
-);
 export default accountsRoute;

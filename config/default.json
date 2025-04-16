@@ -9,6 +9,17 @@
     "user_role": "USER",
     "restaurant_role": "RESTAURANT",
     "courier_role": "COURIER",
-    "salt_rounds":  10
+    "salt_rounds": 10
+  },
+  "port": 3000,
+  "database": {
+    "host": "localhost", 
+    "port": 5432,
+    "user": "postgres",
+    "password": "default_password",
+    "name": "restaurantservice_db"
+  },
+  "jwt": {
+    "secret": "default_jwt_secret"
   }
 }

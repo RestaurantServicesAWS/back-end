@@ -1,0 +1,13 @@
+{
+    "port": "PORT",
+    "database": {
+      "host": "DB_HOST",
+      "port": "DB_PORT",
+      "user": "DB_USER",
+      "password": "DB_PASSWORD",
+      "name": "DB_NAME"
+    },
+    "jwt": {
+      "secret": "JWT_SECRET"
+    }
+  }

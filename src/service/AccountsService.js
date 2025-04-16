@@ -1,164 +1,105 @@
-// import config from "config";
-// import bcrypt from "bcrypt";
-// import { createError } from "../errors/errors.js";
-// import mongoConnection from "../db/MongoConnection.js";
-// import JwtUtils from "../security/JwtUtils.js";
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import config from 'config';
 
-// const userRole = config.get("accounting.user_role");
-// const restaurantRole = config.get("accounting.restaurant_role");
-// const courierRole = config.get("accounting.courier_role");
+class AccountsService {
+  #pool;
 
-// class AccountsService {
-//   #accounts;
-//   constructor() {
-//     this.#accounts = mongoConnection.getCollection(
-//       config.get("db.accounts_collection")
-//     );
-//   }
+  constructor(postgresConnection) {
+    this.postgresConnection = postgresConnection;
+  }
 
-//   async addAccount(account) {
-//     await this.#addAccount(account, userRole || restaurantRole || courierRole);
-//     return await this.getAccount(account.email);
-//   }
+  // Инициализация пула при первом использовании
+  async init() {
+    this.#pool = await this.postgresConnection.getPool();
+  }
 
-//   async #addAccount(account, role) {
-//     const checkExists = await this.#accounts.findOne({ _id: account.email });
-//     if (checkExists) {
-//       throw createError(
-//         409,
-//         `account with email: ${account.email} already exists`
-//       );
-//     }
-//     const serviceAccount = await this.#toServiceAccount(account, role);
-//     await this.#accounts.insertOne(serviceAccount);
-//   }
+  async addAccount(data) {
+    await this.init();
+    const { email, username, password, role } = data;
+    const hashedPassword = await bcrypt.hash(password, config.get('accounting.salt_rounds'));
+    const query = `
+      INSERT INTO accounts (email, username, password, role, is_blocked, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *;
+    `;
+    const values = [email, username, hashedPassword, role, false, new Date()];
+    const result = await this.#pool.query(query, values);
+    return result.rows[0];
+  }
 
-//   async #toServiceAccount(account, role) {
-//     try {
-//       const hashPassword = await bcrypt.hash(
-//         account.password,
-//         config.get("accounting.salt_rounds")
-//       );
-//       const serviceAccount = {
-//         _id: account.email,
-//         username: account.username,
-//         role,
-//         hashPassword,
-//         blocked: false,
-//       };
-//       return serviceAccount;
-//     } catch (error) {
-//       console.error("Error hashing password:", error);
-//       throw error;
-//     }
-//   }
+  async updatePassword({ email, password }) {
+    await this.init();
+    const hashedPassword = await bcrypt.hash(password, config.get('accounting.salt_rounds'));
+    const query = `
+      UPDATE accounts
+      SET password = $1
+      WHERE email = $2
+      RETURNING *;
+    `;
+    const result = await this.#pool.query(query, [hashedPassword, email]);
+    if (result.rowCount === 0) {
+      throw new Error('Account not found');
+    }
+    return result.rows[0];
+  }
 
-//   async getAccount(email) {
-//     const checkExists = await this.#accounts.findOne({ _id: email });
-//     if (!checkExists) {
-//       throw createError(404, `account with email: ${email} doesn’t exist`);
-//     }
-//     return checkExists;
-//   }
+  async getAccount(email) {
+    await this.init();
+    const query = `SELECT * FROM accounts WHERE email = $1;`;
+    const result = await this.#pool.query(query, [email]);
+    if (result.rowCount === 0) {
+      throw new Error('Account not found');
+    }
+    return result.rows[0];
+  }
 
-//   async updateAccount(email, updateData) {
-//     const result = await this.#accounts.findOneAndUpdate(
-//       { _id: email },
-//       { $set: updateData },
-//       { returnDocument: "after", upsert: true }
-//     );
-//     return result.value;
-//   }
+  async setAccountBlockStatus(email, isBlocked) {
+    await this.init();
+    const query = `
+      UPDATE accounts
+      SET is_blocked = $1
+      WHERE email = $2
+      RETURNING *;
+    `;
+    const result = await this.#pool.query(query, [isBlocked, email]);
+    if (result.rowCount === 0) {
+      throw new Error('Account not found');
+    }
+    return result.rows[0];
+  }
 
-//   async updatePassword(account) {
-//     const checkExists = await this.getAccount(account.email);
-//     const newHashPassword = await this.#updatePassword(
-//       checkExists,
-//       account.password
-//     );
-//     const accWithNewPassword = await this.#accounts.findOneAndUpdate(
-//       { _id: checkExists._id },
-//       { $set: { newHashPassword } },
-//       { returnDocument: "after" }
-//     );
-//     if (!accWithNewPassword) {
-//       throw createError(400, `The password hasn't been changed`);
-//     }
-//   }
+  async delete(email) {
+    await this.init();
+    const query = `DELETE FROM accounts WHERE email = $1;`;
+    const result = await this.#pool.query(query, [email]);
+    if (result.rowCount === 0) {
+      throw new Error('Account not found');
+    }
+    return true;
+  }
 
-//   async #updatePassword(account, newPassword) {
-//     if (bcrypt.compareSync(newPassword, account.hashPassword)) {
-//       throw createError(
-//         400,
-//         `New password should be different from the existing one`
-//       );
-//     }
-//     const newHashPassword = bcrypt.hashSync(
-//       newPassword,
-//       config.get("accounting.salt_rounds")
-//     );
-//     return newHashPassword;
-//   }
+  async login({ email, password }) {
+    await this.init();
+    const account = await this.getAccount(email);
+    if (account.is_blocked) {
+      throw new Error('Account is blocked');
+    }
+    const isPasswordValid = await bcrypt.compare(password, account.password);
+    if (!isPasswordValid) {
+      throw new Error('Invalid password');
+    }
+    const token = jwt.sign(
+      { email: account.email, role: account.role, username: account.username },
+      config.get('jwt.secret'),
+      { expiresIn: '1h' }
+    );
+    return { token };
+  }
+}
 
-//   async checkLogin(serviceAccount, password) {
-//     if (
-//       !serviceAccount ||
-//       !(await bcrypt.compare(password, serviceAccount.hashPassword))
-//     ) {
-//       throw createError(400, "Wrong credentials");
-//     }
-//     if (new Date().getTime() > serviceAccount.expiration) {
-//       throw createError(400, "Account's password is expired");
-//     }
-//   }
-
-//   async changeRole({ email, role }) {
-//     const setRole = await this.#accounts.findOneAndUpdate(
-//       { _id: email },
-//       { $set: { role } },
-//       { returnDocument: "after" }
-//     );
-//     if (!setRole) {
-//       throw createError(404, `account with email: ${email} doesn’t exist`);
-//     }
-//     return setRole;
-//   }
-
-//   async setAccountBlockStatus(email, blockStatus) {
-//     const checkExists = await this.#accounts.findOne({ _id: email });
-//     if (!checkExists) {
-//       throw createError(404, `account with email: ${email} doesn’t exist`);
-//     }
-//     const blockStatusRes = await this.#accounts.updateOne(
-//       { _id: email },
-//       { $set: { blocked: blockStatus } }
-//     );
-//     return blockStatusRes;
-//   }
-
-//   async delete(email) {
-//     await this.getAccount(email);
-//     const deletedAccount = await this.#accounts.deleteOne({ _id: email });
-//     return deletedAccount;
-//   }
-
-//   async login(account) {
-//     try {
-//       const { email, password } = account;
-//       const user = await this.getAccount(email);
-//       if (user.blocked) {
-//         throw createError(400, "account is blocked");
-//       }
-//       await this.checkLogin(user, password);
-//       return JwtUtils.getJwt(user);
-//     } catch (error) {
-//       throw error;
-//     }
-//   }
-
-
-// }
-
-// const accountingService = new AccountsService();
-// export default accountingService;
-
+export default async (postgresConnection) => {
+  const service = new AccountsService(postgresConnection);
+  await service.init();
+  return service;
+};
