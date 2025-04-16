@@ -25,28 +25,25 @@ const accountsRoute = (postgresConnection) => {
     }
   };
 
-  // Создание аккаунта (user, restaurant, courier)
+  // Создание аккаунта
   router.post(
-    '/:role(user|restaurant|courier)',
+    '/',
     validator(schemaAccount),
     asyncHandler(async (req, res) => {
       const accountingService = await accountingServicePromise;
-      const { role } = req.params;
-      const accountData = { ...req.body, role };
+      const accountData = req.body;
       const account = await accountingService.addAccount(accountData);
-      res.status(201).send({ message: `${role} account created`, account });
+      res.status(201).send({ message: 'Account created', account });
     })
   );
 
-  // Обновление пароля
-  router.put(
-    '/',
-    authenticateToken,
-    validator(schemaPassowrd),
+  // Логин
+  router.post(
+    '/login',
     asyncHandler(async (req, res) => {
       const accountingService = await accountingServicePromise;
-      const updatedAccount = await accountingService.updatePassword(req.body);
-      res.send({ message: 'Password updated', account: updatedAccount });
+      const token = await accountingService.login(req.body);
+      res.send(token);
     })
   );
 
@@ -61,37 +58,26 @@ const accountsRoute = (postgresConnection) => {
     })
   );
 
-  // Блокировка/разблокировка аккаунта
+  // Обновление аккаунта
   router.put(
-    '/:action(block|unblock)/:email',
+    '/',
     authenticateToken,
+    validator(schemaAccount),
     asyncHandler(async (req, res) => {
       const accountingService = await accountingServicePromise;
-      const { action, email } = req.params;
-      const isBlocked = action === 'block';
-      const updatedAccount = await accountingService.setAccountBlockStatus(email, isBlocked);
-      res.status(200).send({ message: `Account ${isBlocked ? 'blocked' : 'unblocked'}`, account: updatedAccount });
+      const updatedAccount = await accountingService.updateAccount(req.user.email, req.body);
+      res.send({ message: 'Account updated', account: updatedAccount });
     })
   );
 
   // Удаление аккаунта
   router.delete(
-    '/:email',
+    '/',
     authenticateToken,
     asyncHandler(async (req, res) => {
       const accountingService = await accountingServicePromise;
-      await accountingService.delete(req.params.email);
+      await accountingService.delete(req.user.email);
       res.status(200).send({ message: 'Account deleted' });
-    })
-  );
-
-  // Логин
-  router.post(
-    '/login',
-    asyncHandler(async (req, res) => {
-      const accountingService = await accountingServicePromise;
-      const token = await accountingService.login(req.body);
-      res.send(token);
     })
   );
 

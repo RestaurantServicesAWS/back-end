@@ -16,32 +16,34 @@ class AccountsService {
 
   async addAccount(data) {
     await this.init();
-    const { email, username, password, role } = data;
+    const { email, name, password, city, street, building, flat, phone } = data;
     const hashedPassword = await bcrypt.hash(password, config.get('accounting.salt_rounds'));
     const query = `
-      INSERT INTO accounts (email, username, password, role, is_blocked, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO accounts (email, name, password, is_blocked, created_at, city, street, building, flat, phone)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *;
     `;
-    const values = [email, username, hashedPassword, role, false, new Date()];
+    const values = [email, name, hashedPassword, false, new Date(), city, street, building, flat, phone];
     const result = await this.#pool.query(query, values);
     return result.rows[0];
   }
 
-  async updatePassword({ email, password }) {
+  async login({ email, password }) {
     await this.init();
-    const hashedPassword = await bcrypt.hash(password, config.get('accounting.salt_rounds'));
-    const query = `
-      UPDATE accounts
-      SET password = $1
-      WHERE email = $2
-      RETURNING *;
-    `;
-    const result = await this.#pool.query(query, [hashedPassword, email]);
-    if (result.rowCount === 0) {
-      throw new Error('Account not found');
+    const account = await this.getAccount(email);
+    if (account.is_blocked) {
+      throw new Error('Account is blocked');
     }
-    return result.rows[0];
+    const isPasswordValid = await bcrypt.compare(password, account.password);
+    if (!isPasswordValid) {
+      throw new Error('Invalid password');
+    }
+    const token = jwt.sign(
+      { email: account.email, name: account.name },
+      config.get('jwt.secret'),
+      { expiresIn: '1h' }
+    );
+    return { token };
   }
 
   async getAccount(email) {
@@ -54,15 +56,25 @@ class AccountsService {
     return result.rows[0];
   }
 
-  async setAccountBlockStatus(email, isBlocked) {
+  async updateAccount(email, data) {
     await this.init();
+    const { name, password, city, street, building, flat, phone } = data;
+    const hashedPassword = password ? await bcrypt.hash(password, config.get('accounting.salt_rounds')) : undefined;
     const query = `
       UPDATE accounts
-      SET is_blocked = $1
-      WHERE email = $2
+      SET 
+        name = COALESCE($1, name),
+        password = COALESCE($2, password),
+        city = COALESCE($3, city),
+        street = COALESCE($4, street),
+        building = COALESCE($5, building),
+        flat = COALESCE($6, flat),
+        phone = COALESCE($7, phone)
+      WHERE email = $8
       RETURNING *;
     `;
-    const result = await this.#pool.query(query, [isBlocked, email]);
+    const values = [name, hashedPassword, city, street, building, flat, phone, email];
+    const result = await this.#pool.query(query, values);
     if (result.rowCount === 0) {
       throw new Error('Account not found');
     }
@@ -77,24 +89,6 @@ class AccountsService {
       throw new Error('Account not found');
     }
     return true;
-  }
-
-  async login({ email, password }) {
-    await this.init();
-    const account = await this.getAccount(email);
-    if (account.is_blocked) {
-      throw new Error('Account is blocked');
-    }
-    const isPasswordValid = await bcrypt.compare(password, account.password);
-    if (!isPasswordValid) {
-      throw new Error('Invalid password');
-    }
-    const token = jwt.sign(
-      { email: account.email, role: account.role, username: account.username },
-      config.get('jwt.secret'),
-      { expiresIn: '1h' }
-    );
-    return { token };
   }
 }
 
