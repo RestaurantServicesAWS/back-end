@@ -1,76 +1,119 @@
-import express from 'express';
-import asyncHandler from 'express-async-handler';
-import { validator } from '../middleware/validation.js';
-import { schemaDish, schemaOrder } from '../validation/RestaurantSchemas.js';
-import restaurantService from '../service/RestaurantService.js';
+import express from "express";
+import asyncHandler from "express-async-handler";
+import { validator } from "../middleware/validation.js";
+import {
+  schemaDish,
+  schemaRestaurant,
+} from "../validation/RestaurantSchemas.js";
 
-const restaurantRoutes = express.Router();
+const restaurantRoute = (postgresConnection) => {
+  const router = express.Router();
 
-// Middleware для проверки токена Cognito
-// const authenticateToken = async (req, res, next) => {
-//   const token = req.headers.authorization?.split(' ')[1];
-//   if (!token) {
-//     return res.status(401).send({ error: 'Authorization token required' });
-//   }
-//   // Здесь должна быть логика проверки токена через Cognito
-//   next();
-// };
+  let restaurantService;
 
-// Добавить блюдо в меню
-restaurantRoutes.post(
-  '/menu',
-  validator(schemaDish),
-  asyncHandler(async (req, res) => {
-    const dish = await restaurantService.addDish(req.body);
-    res.status(201).send({ message: 'Dish added to menu', dish });
-  })
-);
+  const getRestaurantService = async () => {
+    if (!restaurantService) {
+      const module = await import("../service/RestaurantService.js");
+      restaurantService = module.default(postgresConnection);
+    }
+    return restaurantService;
+  };
 
-// Обновить блюдо в меню
-restaurantRoutes.put(
-  '/menu/:dishId',
-  validator(schemaDish),
-  asyncHandler(async (req, res) => {
-    const dish = await restaurantService.updateDish(req.params.dishId, req.body);
-    res.status(200).send({ message: 'Dish updated', dish });
-  })
-);
+  // Регистрация ресторана
+  router.post(
+    "/register",
+    validator(schemaRestaurant),
+    asyncHandler(async (req, res) => {
+      const service = await getRestaurantService();
+      const restaurant = await service.register(req.body);
+      res.status(201).send({ message: "Restaurant registered", restaurant });
+    })
+  );
 
-// Удалить блюдо из меню
-restaurantRoutes.delete(
-  '/menu/:dishId',
-  asyncHandler(async (req, res) => {
-    await restaurantService.deleteDish(req.params.dishId);
-    res.status(200).send({ message: 'Dish deleted' });
-  })
-);
+  // Логин ресторана
+  router.post(
+    "/login",
+    asyncHandler(async (req, res) => {
+      const service = await getRestaurantService();
+      const { token } = await service.login(req.body); 
+      res.status(200).send({ token });
+    })
+  );
 
-// Получить меню ресторана
-restaurantRoutes.get(
-  '/menu/:restaurantId',
-  asyncHandler(async (req, res) => {
-    const menu = await restaurantService.getMenu(req.params.restaurantId);
-    res.status(200).send(menu);
-  })
-);
+  // Получение ресторана по ID
+  router.get(
+    "/:id",
+    asyncHandler(async (req, res) => {
+      const service = await getRestaurantService();
+      const restaurant = await service.getById(req.params.id);
+      res.status(200).send(restaurant);
+    })
+  );
 
-// Принять заказ и установить время приготовления
-restaurantRoutes.post(
-  '/orders',
-  validator(schemaOrder),
-  asyncHandler(async (req, res) => {
-    const order = await restaurantService.acceptOrder(req.body);
-    res.status(201).send({ message: 'Order accepted', order });
-  })
-);
+  // Обновление ресторана
+  router.put(
+    "/:id",
+    validator(schemaRestaurant),
+    asyncHandler(async (req, res) => {
+      const service = await getRestaurantService();
+      const restaurant = await service.update(req.params.id, req.body);
+      res.status(200).send({ message: "Restaurant updated", restaurant });
+    })
+  );
 
-// Получить список заказов ресторана
-restaurantRoutes.get(
-  '/orders/:restaurantId',
-  asyncHandler(async (req, res) => {
-    const orders = await restaurantService.getOrders(req.params.restaurantId);
-    res.status(200).send(orders);
-  })
-);
+  // Удаление ресторана
+  router.delete(
+    "/:id",
+    asyncHandler(async (req, res) => {
+      const service = await getRestaurantService();
+      await service.delete(req.params.id);
+      res.status(200).send({ message: "Restaurant deleted" });
+    })
+  );
 
-export default restaurantRoutes;
+  // Добавить блюдо в меню
+  router.post(
+    "/menu",
+    validator(schemaDish),
+    asyncHandler(async (req, res) => {
+      const service = await getRestaurantService();
+      const dish = await service.addDish(req.body);
+      res.status(201).send({ message: "Dish added to menu", dish });
+    })
+  );
+
+  // Обновить блюдо в меню
+  router.put(
+    "/menu/:dishId",
+    validator(schemaDish),
+    asyncHandler(async (req, res) => {
+      const service = await getRestaurantService();
+      const dish = await service.updateDish(req.params.dishId, req.body);
+      res.status(200).send({ message: "Dish updated", dish });
+    })
+  );
+
+  // Удалить блюдо из меню
+  router.delete(
+    "/menu/:dishId",
+    asyncHandler(async (req, res) => {
+      const service = await getRestaurantService();
+      await service.deleteDish(req.params.dishId);
+      res.status(200).send({ message: "Dish deleted" });
+    })
+  );
+
+  // Получить меню ресторана
+  router.get(
+    "/menu/:restaurantId",
+    asyncHandler(async (req, res) => {
+      const service = await getRestaurantService();
+      const menu = await service.getMenu(req.params.restaurantId);
+      res.status(200).send(menu);
+    })
+  );
+
+  return router;
+};
+
+export default restaurantRoute;

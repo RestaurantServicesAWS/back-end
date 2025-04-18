@@ -31,3 +31,19 @@ export function valid(req, res, next) {
   }
   next();
 }
+
+export const authenticateToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).send({ error: "Authorization token required" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, config.get("jwt.secret"));
+    req.user = decoded;
+    next();
+  } catch {
+    res.status(403).send({ error: "Invalid or expired token" });
+  }
+};

@@ -1,6 +1,7 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import logger from '../logger/winstonLogging.js';
+import config from 'config';
 
 class PostgresConnection {
   #pool;
@@ -17,21 +18,20 @@ class PostgresConnection {
     }
 
     try {
-      // Временное использование параметров напрямую
       this.#pool = new Pool({
-        user: 'admin',
-        host: '51.20.132.5',
-        database: 'testdb',
-        password: 'qwerty1488',
-        port: 5432,
+        user: config.get('database.user'),
+        host: config.get('database.host'),
+        database: config.get('database.name'),
+        password: config.get('database.password'),
+        port: config.get('database.port'),
       });
 
       await this.#pool.connect();
       this.#isConnected = true;
       logger.info('Successfully connected to PostgreSQL database', {
-        host: '51.20.132.5',
-        port: 5432,
-        database: 'testdb',
+        host: config.get('database.host'),
+        port: config.get('database.port'),
+        database: config.get('database.name'),
       });
       return this.#pool;
     } catch (error) {
@@ -79,15 +79,5 @@ class PostgresConnection {
 }
 
 const postgresConnection = new PostgresConnection();
-
-process.on('SIGINT', async () => {
-  await postgresConnection.close();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  await postgresConnection.close();
-  process.exit(0);
-});
 
 export default postgresConnection;

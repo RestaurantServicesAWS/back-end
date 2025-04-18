@@ -1,6 +1,6 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import config from 'config';
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import config from "config";
 
 class AccountsService {
   #pool;
@@ -17,13 +17,27 @@ class AccountsService {
   async addAccount(data) {
     await this.init();
     const { email, name, password, city, street, building, flat, phone } = data;
-    const hashedPassword = await bcrypt.hash(password, config.get('accounting.salt_rounds'));
+    const hashedPassword = await bcrypt.hash(
+      password,
+      config.get("accounting.salt_rounds")
+    );
     const query = `
       INSERT INTO accounts (email, name, password, is_blocked, created_at, city, street, building, flat, phone)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *;
     `;
-    const values = [email, name, hashedPassword, false, new Date(), city, street, building, flat, phone];
+    const values = [
+      email,
+      name,
+      hashedPassword,
+      false,
+      new Date(),
+      city,
+      street,
+      building,
+      flat,
+      phone,
+    ];
     const result = await this.#pool.query(query, values);
     return result.rows[0];
   }
@@ -32,16 +46,16 @@ class AccountsService {
     await this.init();
     const account = await this.getAccount(email);
     if (account.is_blocked) {
-      throw new Error('Account is blocked');
+      throw new Error("Account is blocked");
     }
     const isPasswordValid = await bcrypt.compare(password, account.password);
     if (!isPasswordValid) {
-      throw new Error('Invalid password');
+      throw new Error("Invalid password");
     }
     const token = jwt.sign(
       { email: account.email, name: account.name },
-      config.get('jwt.secret'),
-      { expiresIn: '1h' }
+      config.get("jwt.secret"),
+      { expiresIn: "1h" }
     );
     return { token };
   }
@@ -51,7 +65,7 @@ class AccountsService {
     const query = `SELECT * FROM accounts WHERE email = $1;`;
     const result = await this.#pool.query(query, [email]);
     if (result.rowCount === 0) {
-      throw new Error('Account not found');
+      throw new Error("Account not found");
     }
     return result.rows[0];
   }
@@ -59,7 +73,9 @@ class AccountsService {
   async updateAccount(email, data) {
     await this.init();
     const { name, password, city, street, building, flat, phone } = data;
-    const hashedPassword = password ? await bcrypt.hash(password, config.get('accounting.salt_rounds')) : undefined;
+    const hashedPassword = password
+      ? await bcrypt.hash(password, config.get("accounting.salt_rounds"))
+      : undefined;
     const query = `
       UPDATE accounts
       SET 
@@ -73,10 +89,19 @@ class AccountsService {
       WHERE email = $8
       RETURNING *;
     `;
-    const values = [name, hashedPassword, city, street, building, flat, phone, email];
+    const values = [
+      name,
+      hashedPassword,
+      city,
+      street,
+      building,
+      flat,
+      phone,
+      email,
+    ];
     const result = await this.#pool.query(query, values);
     if (result.rowCount === 0) {
-      throw new Error('Account not found');
+      throw new Error("Account not found");
     }
     return result.rows[0];
   }
@@ -86,7 +111,7 @@ class AccountsService {
     const query = `DELETE FROM accounts WHERE email = $1;`;
     const result = await this.#pool.query(query, [email]);
     if (result.rowCount === 0) {
-      throw new Error('Account not found');
+      throw new Error("Account not found");
     }
     return true;
   }

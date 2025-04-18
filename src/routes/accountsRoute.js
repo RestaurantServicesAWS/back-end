@@ -1,83 +1,74 @@
-import express from 'express';
-import asyncHandler from 'express-async-handler';
-import jwt from 'jsonwebtoken';
-import config from 'config';
-import { validator } from '../middleware/validation.js';
-import { schemaAccount, schemaPassword } from '../validation/AccountSchemas.js';
+import express from "express";
+import asyncHandler from "express-async-handler";
+import { authenticateToken } from "../middleware/validation.js";
+import { validator } from "../middleware/validation.js";
+import { schemaAccount } from "../validation/AccountSchemas.js";
 
 const accountsRoute = (postgresConnection) => {
   const router = express.Router();
 
-  // Инициализация сервиса с передачей postgresConnection
-  const accountingServicePromise = import('../service/AccountsService.js').then(module => module.default(postgresConnection));
+  let accountingService;
 
-  const authenticateToken = async (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).send({ error: 'Authorization token required' });
+  const getAccountingService = async () => {
+    if (!accountingService) {
+      const module = await import("../service/AccountsService.js");
+      accountingService = module.default(postgresConnection);
     }
-    try {
-      const decoded = jwt.verify(token, config.get('jwt.secret'));
-      req.user = decoded;
-      next();
-    } catch (error) {
-      res.status(403).send({ error: 'Invalid or expired token' });
-    }
+    return accountingService;
   };
 
   // Создание аккаунта
   router.post(
-    '/',
+    "/",
     validator(schemaAccount),
     asyncHandler(async (req, res) => {
-      const accountingService = await accountingServicePromise;
-      const accountData = req.body;
-      const account = await accountingService.addAccount(accountData);
-      res.status(201).send({ message: 'Account created', account });
+      const service = await getAccountingService();
+      const account = await service.addAccount(req.body);
+      res.status(201).send({ message: "Account created", account });
     })
   );
 
   // Логин
   router.post(
-    '/login',
+    "/login",
     asyncHandler(async (req, res) => {
-      const accountingService = await accountingServicePromise;
-      const token = await accountingService.login(req.body);
+      const service = await getAccountingService();
+      const token = await service.login(req.body);
       res.send(token);
     })
   );
 
   // Получение аккаунта по email
   router.get(
-    '/:email',
+    "/:email",
     authenticateToken,
     asyncHandler(async (req, res) => {
-      const accountingService = await accountingServicePromise;
-      const account = await accountingService.getAccount(req.params.email);
+      const service = await getAccountingService();
+      const account = await service.getAccount(req.params.email);
       res.status(200).send(account);
     })
   );
 
   // Обновление аккаунта
   router.put(
-    '/',
+    "/",
     authenticateToken,
     validator(schemaAccount),
     asyncHandler(async (req, res) => {
-      const accountingService = await accountingServicePromise;
-      const updatedAccount = await accountingService.updateAccount(req.user.email, req.body);
-      res.send({ message: 'Account updated', account: updatedAccount });
+      const service = await getAccountingService();
+      const updatedAccount = await service.updateAccount(req.user.email, req.body);
+      res.send({ message: "Account updated", account: updatedAccount });
     })
   );
 
   // Удаление аккаунта
   router.delete(
-    '/',
+    "/",
     authenticateToken,
     asyncHandler(async (req, res) => {
-      const accountingService = await accountingServicePromise;
-      await accountingService.delete(req.user.email);
-      res.status(200).send({ message: 'Account deleted' });
+      const service = await getAccountingService();
+      await service.delete(req.user.email);
+      res.status(200).send({ message: "Account deleted" });
     })
   );
 
