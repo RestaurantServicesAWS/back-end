@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import jwt from 'jsonwebtoken';
 import config from 'config';
 import { validator } from '../middleware/validation.js';
-import { schemaAccount, schemaPassowrd } from '../validation/AccountSchemas.js';
+import { schemaAccount, schemaPassword } from '../validation/AccountSchemas.js';
 
 const accountsRoute = (postgresConnection) => {
   const router = express.Router();

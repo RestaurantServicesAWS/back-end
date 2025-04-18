@@ -8,11 +8,11 @@ export const schemaGetAccount = Joi.object({
   email: schemaUser,
 });
 
-const nameSchema = Joi.string()
+export const nameSchema = Joi.string()
   .pattern(/^\S+\s\S+$/)
   .required();
 
-const passwordSchema = joiPassword
+export const passwordSchema = joiPassword
   .string()
   .min(8)
   .minOfSpecialCharacters(1)
@@ -30,7 +30,16 @@ export const schemaAccount = Joi.object({
   role: Joi.string().valid(...config.get("accounting.roles")),
 });
 
-export const schemaPassowrd = Joi.object({
+export const schemaPassword = Joi.object({
   email: schemaUser,
   password: passwordSchema,
 });
+
+export const schemaLogin = Joi.object({
+  email: schemaUser,
+  password: passwordSchema
+});
+
+export const phoneSchema = Joi.string()
+  .pattern(/^\+?[1-9]\d{7,14}$/)
+  .required()
