@@ -13,11 +13,11 @@
   },
   "port": 3000,
   "database": {
-    "host": "localhost", 
+    "host": "51.20.132.5", 
     "port": 5432,
-    "user": "postgres",
-    "password": "default_password",
-    "name": "restaurantservice_db"
+    "user": "admin",
+    "password": "qwerty1488",
+    "name": "testdb"
   },
   "jwt": {
     "secret": "default_jwt_secret"

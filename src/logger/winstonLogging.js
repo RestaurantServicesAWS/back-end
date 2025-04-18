@@ -1,7 +1,6 @@
-import { createLogger, format, transports } from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
+import { createLogger, format, transports } from "winston";
+import DailyRotateFile from "winston-daily-rotate-file";
 
-// Определение уровней логирования
 const levels = {
   error: 0,
   warn: 1,
@@ -10,22 +9,19 @@ const levels = {
   debug: 4,
 };
 
-// Определение цветов для уровней логирования (для консоли)
 const colors = {
-  error: 'red',
-  warn: 'yellow',
-  info: 'green',
-  http: 'magenta',
-  debug: 'white',
+  error: "red",
+  warn: "yellow",
+  info: "green",
+  http: "magenta",
+  debug: "white",
 };
 
-// Добавление цветов в winston
 format.colorize().addColors(colors);
 
-// Формат сообщений
 const logFormat = format.combine(
-  format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  format.errors({ stack: true }), // Включаем стек ошибок
+  format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+  format.errors({ stack: true }),
   format.printf(({ level, message, timestamp, stack, ...metadata }) => {
     let msg = `${timestamp} [${level.toUpperCase()}]: ${message}`;
     if (Object.keys(metadata).length > 0) {
@@ -38,38 +34,30 @@ const logFormat = format.combine(
   })
 );
 
-// Настройка логгера
 const logger = createLogger({
   levels,
-  level: process.env.NODE_ENV === 'development' ? 'debug' : 'info', // В development логируем всё, в production только info и выше
+  level: process.env.NODE_ENV === "development" ? "debug" : "info",
   format: logFormat,
   transports: [
-    // Логирование в консоль
     new transports.Console({
-      format: format.combine(
-        format.colorize({ all: true }), // Добавляем цвета для консоли
-        logFormat
-      ),
+      format: format.combine(format.colorize({ all: true }), logFormat),
     }),
-    // Логирование в файл (все логи)
     new DailyRotateFile({
-      filename: 'logs/application-%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true, // Архивировать старые логи
-      maxSize: '20m', // Максимальный размер файла 20MB
-      maxFiles: '14d', // Хранить логи 14 дней
-    }),
-    // Логирование ошибок в отдельный файл
-    new DailyRotateFile({
-      filename: 'logs/error-%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      level: 'error',
+      filename: "logs/application-%DATE%.log",
+      datePattern: "YYYY-MM-DD",
       zippedArchive: true,
-      maxSize: '20m',
-      maxFiles: '30d', // Хранить ошибки 30 дней
+      maxSize: "20m",
+      maxFiles: "14d",
+    }),
+    new DailyRotateFile({
+      filename: "logs/error-%DATE%.log",
+      datePattern: "YYYY-MM-DD",
+      level: "error",
+      zippedArchive: true,
+      maxSize: "20m",
+      maxFiles: "30d",
     }),
   ],
 });
 
-// Экспорт логгера
 export default logger;

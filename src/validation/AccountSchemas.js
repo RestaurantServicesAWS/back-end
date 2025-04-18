@@ -25,9 +25,15 @@ export const passwordSchema = joiPassword
 
 export const schemaAccount = Joi.object({
   email: schemaUser,
-  username: nameSchema,
+  name: nameSchema, 
   password: passwordSchema,
-  role: Joi.string().valid(...config.get("accounting.roles")),
+  city: Joi.string().required(),
+  street: Joi.string().required(),
+  building: Joi.string().required(),
+  flat: Joi.string().optional(),
+  phone: Joi.string()
+    .pattern(/^\+?[1-9]\d{7,14}$/)
+    .required(),
 });
 
 export const schemaPassword = Joi.object({
@@ -37,9 +43,9 @@ export const schemaPassword = Joi.object({
 
 export const schemaLogin = Joi.object({
   email: schemaUser,
-  password: passwordSchema
+  password: passwordSchema,
 });
 
 export const phoneSchema = Joi.string()
   .pattern(/^\+?[1-9]\d{7,14}$/)
-  .required()
+  .required();

@@ -1,9 +1,10 @@
 import express from 'express';
 import accountsRoute from './routes/accountsRoute.js';
+import restaurantsRoute from './routes/restaurantRoute.js';
 import { errorHandler } from './errors/errors.js';
 import config from 'config';
 import dotenv from 'dotenv';
-import postgresConnection from './db/PostgresConnection.js'; // Предполагаю, что файл называется PostgresConnection.js
+import postgresConnection from './db/PostgresConnection.js'; 
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ const app = express();
 app.use(express.json());
 
 app.use('/accounts', accountsRoute(postgresConnection));
+app.use('/restaurants', restaurantsRoute(postgresConnection));
 
 
 app.use((req, res) => {
