@@ -12,20 +12,14 @@ export const schemaCourierAccount = Joi.object({
     phone: phoneSchema
 });
 
-export const schemaGetAccount = Joi.object({
-    email: schemaUser,
+export const schemaUpdOrderStatus = Joi.object({
+    id: Joi.number()
+        .integer()
+        .positive()
+        .required(),
+    status: Joi.string()
+        .valid('ORDER PICKED UP', 'ORDER DELIVERED')
+        .required()
 });
 
-const nameSchema = Joi.string()
-    .pattern(/^\S+\s\S+$/)
-    .required();
-
-
-
-export const schemaAccount = Joi.object({
-    email: schemaUser,
-    username: nameSchema,
-    password: passwordSchema,
-    role: Joi.string().valid(...config.get("accounting.roles")),
-});
 
