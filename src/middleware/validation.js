@@ -1,4 +1,7 @@
 import { createError } from "../errors/errors.js";
+import jwt from "jsonwebtoken";
+import config from "config";
+
 export function expressValidator(schemasObj) {
   return (req, res, next) => {
     if (req._body) {
@@ -34,7 +37,6 @@ export function valid(req, res, next) {
 
 export const authenticateToken = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
-
   if (!token) {
     return res.status(401).send({ error: "Authorization token required" });
   }

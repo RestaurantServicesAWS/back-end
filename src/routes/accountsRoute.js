@@ -2,7 +2,7 @@ import express from "express";
 import asyncHandler from "express-async-handler";
 import { authenticateToken } from "../middleware/validation.js";
 import { validator } from "../middleware/validation.js";
-import { schemaAccount } from "../validation/AccountSchemas.js";
+import { schemaAccount, schemaLogin } from "../validation/AccountSchemas.js";
 
 const accountsRoute = (postgresConnection) => {
   const router = express.Router();
@@ -19,7 +19,7 @@ const accountsRoute = (postgresConnection) => {
 
   // Создание аккаунта
   router.post(
-    "/",
+    "/register",
     validator(schemaAccount),
     asyncHandler(async (req, res) => {
       const service = await getAccountingService();
@@ -31,6 +31,7 @@ const accountsRoute = (postgresConnection) => {
   // Логин
   router.post(
     "/login",
+    validator(schemaLogin),
     asyncHandler(async (req, res) => {
       const service = await getAccountingService();
       const token = await service.login(req.body);

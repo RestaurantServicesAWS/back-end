@@ -1,6 +1,7 @@
 import express from 'express';
 import accountsRoute from './routes/accountsRoute.js';
 import restaurantsRoute from './routes/restaurantRoute.js';
+import couriersRoute from './routes/couriersRoute.js';
 import { errorHandler } from './errors/errors.js';
 import config from 'config';
 import dotenv from 'dotenv';
@@ -15,6 +16,7 @@ app.use(express.json());
 
 app.use('/accounts', accountsRoute(postgresConnection));
 app.use('/restaurants', restaurantsRoute(postgresConnection));
+app.use('/couriers', couriersRoute(postgresConnection));
 
 
 app.use((req, res) => {
