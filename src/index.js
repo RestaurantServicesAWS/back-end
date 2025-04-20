@@ -3,6 +3,7 @@ import accountsRoute from './routes/accountsRoute.js';
 import restaurantsRoute from './routes/restaurantRoute.js';
 import couriersRoute from './routes/couriersRoute.js';
 import paymentsRoute from './routes/paymentsRoutes.js';
+import ordersRoute from './routes/orderRoutes.js';
 import { errorHandler } from './errors/errors.js';
 import config from 'config';
 import dotenv from 'dotenv';
@@ -19,6 +20,7 @@ app.use('/accounts', accountsRoute(postgresConnection));
 app.use('/restaurants', restaurantsRoute(postgresConnection));
 app.use('/couriers', couriersRoute(postgresConnection));
 app.use('/payments', paymentsRoute(postgresConnection));
+app.use('/orders', ordersRoute(postgresConnection));
 
 
 app.use((req, res) => {
