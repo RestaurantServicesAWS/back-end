@@ -1,5 +1,4 @@
 import Joi from "joi";
-import config from "config";
 import { joiPasswordExtendCore } from "joi-password";
 import { passwordSchema, nameSchema, phoneSchema } from "./AccountSchemas.js";
 const joiPassword = Joi.extend(joiPasswordExtendCore);

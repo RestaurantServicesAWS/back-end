@@ -16,6 +16,7 @@ export function expressValidator(schemasObj) {
     next();
   };
 }
+
 export function validator(schema) {
   return (req, res, next) => {
     const { error } = schema.validate(req.body, { abortEarly: false });
@@ -25,6 +26,7 @@ export function validator(schema) {
     next();
   };
 }
+
 export function valid(req, res, next) {
   if (!req.validated) {
     throw createError(500, "server has not validated request");
