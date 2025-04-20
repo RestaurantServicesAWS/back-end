@@ -74,9 +74,14 @@ class RestaurantService {
       }
 
       const token = jwt.sign(
-        { id: restaurant.id, email: restaurant.email },
+        { 
+          id: restaurant.id,
+          email: restaurant.email
+        },
         config.get("jwt.secret"),
-        { expiresIn: "7d" }
+        { 
+          expiresIn: "7d"
+        }
       );
 
       logger.info("Login successful", { email });

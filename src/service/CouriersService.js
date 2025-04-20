@@ -5,9 +5,7 @@ import jwt from "jsonwebtoken";
 import config from "config";
 import logger from "../logger/winstonLogging.js";
 
-
 const couriers_table = "couriers"
-
 class CouriersService {
     #pool;
 
@@ -72,7 +70,10 @@ class CouriersService {
             }
 
             const token = jwt.sign(
-                { id: courier.id, email: courier.email },
+                { 
+                    id: courier.id,
+                    email: courier.email
+                },
                 config.get("jwt.secret"),
                 { expiresIn: "7d" }
             );

@@ -53,7 +53,11 @@ class AccountsService {
       throw new Error("Invalid password");
     }
     const token = jwt.sign(
-      { email: account.email, name: account.name },
+      { 
+        id: account.id,
+        email: account.email,
+        name: account.name 
+      },
       config.get("jwt.secret"),
       { expiresIn: "1h" }
     );
