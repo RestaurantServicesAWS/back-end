@@ -1,14 +1,12 @@
-import express from 'express';
-import accountsRoute from './routes/accountsRoute.js';
-import restaurantsRoute from './routes/restaurantRoute.js';
-import couriersRoute from './routes/couriersRoute.js';
-import paymentsRoute from './routes/paymentsRoutes.js';
-import ordersRoute from './routes/orderRoutes.js';
-import { errorHandler } from './errors/errors.js';
-import config from 'config';
-import dotenv from 'dotenv';
-import postgresConnection from './db/PostgresConnection.js'; 
-
+import express from "express";
+import accountsRoute from "./routes/accountsRoute.js";
+import restaurantsRoute from "./routes/restaurantRoute.js";
+import couriersRoute from "./routes/couriersRoute.js";
+import paymentsRoute from "./routes/paymentsRoutes.js";
+import { errorHandler } from "./errors/errors.js";
+import config from "config";
+import dotenv from "dotenv";
+import postgresConnection from "./db/PostgresConnection.js";
 
 dotenv.config();
 
@@ -17,14 +15,10 @@ const app = express();
 
 app.use(express.json());
 
-
-app.use('/accounts', accountsRoute(postgresConnection));
-app.use('/restaurants', restaurantsRoute(postgresConnection));
-app.use('/couriers', couriersRoute(postgresConnection));
-app.use('/payments', paymentsRoute(postgresConnection));
-app.use('/orders', ordersRoute(postgresConnection));
-
-
+app.use("/accounts", accountsRoute(postgresConnection));
+app.use("/restaurants", restaurantsRoute(postgresConnection));
+app.use("/couriers", couriersRoute(postgresConnection));
+app.use("/payments", paymentsRoute(postgresConnection));
 
 app.use((req, res) => {
   res.status(404).send(`path ${req.path} is not found`);
